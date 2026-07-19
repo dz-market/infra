@@ -1,0 +1,43 @@
+version: "3"
+
+env:
+    COMPOSE_FILE: compose/compose.yml
+    COMPOSE_ENV_FILES:
+        sh: ls env/.env.* 2>/dev/null | paste -sd, -
+
+tasks:
+    up:
+        desc: "Start env by profile(s): task up -- auth (no args = everything)"
+        cmds:
+            - docker compose {{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}up -d --wait
+
+    stop:
+        desc: "Stop containers without removing them: task stop -- auth (no args = everything)"
+        cmds:
+            - docker compose {{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}stop
+
+    restart:
+        desc: "Restart containers: task restart -- auth (no args = everything)"
+        cmds:
+            - docker compose {{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}restart
+
+    down:
+        desc: "Stop env by profile(s): task down -- auth (no args = everything)"
+        cmds:
+            - docker compose {{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}down
+
+    nuke:
+        desc: "Delete env and its data: task nuke -- auth (no args = everything)"
+        prompt: "This will delete data volumes{{if .CLI_ARGS}} of '{{.CLI_ARGS}}'{{else}} of ALL services{{end}}. Continue?"
+        cmds:
+            - docker compose {{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}down -v
+
+    ps:
+        desc: "Show status of all project containers"
+        cmds:
+            - docker compose --profile "*" ps
+
+    logs:
+        desc: "Follow logs: task logs -- auth-postgres (or empty for all)"
+        cmds:
+            - docker compose -- profile "*" logs -f {{.CLI_ARGS}}
