@@ -1,0 +1,8 @@
+name: marketplace
+
+include:
+    - services/compose.auth.yml
+
+networks:
+    marketplace:
+        name: marketplace
