@@ -40,4 +40,4 @@ tasks:
     logs:
         desc: "Follow logs: task logs -- auth-postgres (or empty for all)"
         cmds:
-            - docker compose -- profile "*" logs -f {{.CLI_ARGS}}
+            - docker compose --profile "*" logs -f {{.CLI_ARGS}}
