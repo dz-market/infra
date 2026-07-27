@@ -9,7 +9,7 @@ tasks:
     up:
         desc: "Start env by profile(s): task up -- auth (no args = everything)"
         cmds:
-            - docker compose {{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}up -d --wait
+            - docker compose {{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}up -d --wait --wait-timeout 90
 
     stop:
         desc: "Stop containers without removing them: task stop -- auth (no args = everything)"
