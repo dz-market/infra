@@ -1,5 +1,7 @@
 #file: noinspection ComposeUnknownValues
 
+x-auth-dsn: &auth-dsn postgres://${AUTH_POSTGRES_USER:?}:${AUTH_POSTGRES_PASSWORD:?}@auth-postgres:5432/${AUTH_POSTGRES_DB:?}?sslmode=disable
+
 services:
     auth-postgres:
         image: postgres:18-alpine
@@ -15,6 +17,51 @@ services:
         networks: [marketplace]
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
+            start_interval: 1s
+        restart: unless-stopped
+
+    auth-migrate:
+        image: ${AUTH_MIGRATE_IMAGE:-svc-auth-migrate:dev}
+        build:
+            context: ../../svc-auth
+            target: migrate
+        profiles: [auth]
+        environment:
+            GOOSE_DBSTRING: *auth-dsn
+        networks: [marketplace]
+        depends_on:
+            auth-postgres:
+                condition: service_healthy
+        restart: "no"
+
+    auth:
+        image: ${AUTH_IMAGE:-svc-auth:dev}
+        build:
+            context: ../../svc-auth
+            target: runtime
+        profiles: [auth]
+        environment:
+            GRPC_ADDR: ":50051"
+            GRPC_REFLECTION: ${AUTH_GRPC_REFLECTION:-false}
+            POSTGRES_DSN: *auth-dsn
+            ACCESS_PRIVATE_KEY_PATH: /keys/access.key
+            ACCESS_PUBLIC_KEY_PATH: /keys/access.pub
+        ports:
+            - "${AUTH_GRPC_PORT:?}:50051"
+        volumes:
+            - ${AUTH_KEYS_DIR:?}:/keys:ro
+        networks: [marketplace]
+        depends_on:
+            auth-postgres:
+                condition: service_healthy
+            auth-migrate:
+                condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD", "grpc-health-probe", "-addr=127.0.0.1:50051"]
             interval: 5s
             timeout: 3s
             retries: 5
