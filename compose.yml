@@ -2,6 +2,7 @@ name: marketplace
 
 include:
     - compose/auth.yml
+    - compose/redpanda.yml
 
 networks:
     marketplace:
