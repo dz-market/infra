@@ -48,6 +48,7 @@ services:
             GRPC_ADDR: ":50051"
             GRPC_REFLECTION: ${AUTH_GRPC_REFLECTION:-false}
             POSTGRES_DSN: *auth-dsn
+            KAFKA_BROKERS: ${AUTH_KAFKA_BROKERS:?}
             ACCESS_PRIVATE_KEY_PATH: /keys/access.key
             ACCESS_PUBLIC_KEY_PATH: /keys/access.pub
         ports:
