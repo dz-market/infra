@@ -1,5 +1,7 @@
 #file: noinspection ComposeUnknownValues
 
+x-user-dsn: &user-dsn postgres://${USER_POSTGRES_USER:?}:${USER_POSTGRES_PASSWORD:?}@${USER_POSTGRES_HOST:?}:5432/${USER_POSTGRES_DB:?}?sslmode=disable
+
 services:
     user-postgres:
         image: postgres:18-alpine
@@ -15,6 +17,50 @@ services:
         networks: [marketplace]
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
+            start_interval: 1s
+        restart: unless-stopped
+
+    user-migrate:
+        image: ${USER_MIGRATE_IMAGE:-svc-user-migrate:dev}
+        pull_policy: build
+        build:
+            context: ../../svc-user
+            target: migrate
+        profiles: [user]
+        environment:
+            GOOSE_DBSTRING: *user-dsn
+        networks: [marketplace]
+        depends_on:
+            user-postgres:
+                condition: service_healthy
+        restart: "no"
+
+    user:
+        image: ${USER_IMAGE:-svc-user:dev}
+        pull_policy: build
+        build:
+            context: ../../svc-user
+            target: runtime
+        profiles: [user]
+        environment:
+            GRPC_ADDR: ":${USER_GRPC_PORT:?}"
+            GRPC_REFLECTION: ${USER_GRPC_REFLECTION:-false}
+            POSTGRES_DSN: *user-dsn
+            KAFKA_BROKERS: ${USER_KAFKA_BROKERS:?}
+        ports:
+            - "${USER_GRPC_PORT:?}:${USER_GRPC_PORT:?}"
+        networks: [marketplace]
+        depends_on:
+            user-postgres:
+                condition: service_healthy
+            user-migrate:
+                condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD", "grpc-health-probe", "-addr=127.0.0.1:${USER_GRPC_PORT}"]
             interval: 5s
             timeout: 3s
             retries: 5
