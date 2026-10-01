@@ -1,6 +1,6 @@
 #file: noinspection ComposeUnknownValues
 
-x-auth-dsn: &auth-dsn postgres://${AUTH_POSTGRES_USER:?}:${AUTH_POSTGRES_PASSWORD:?}@auth-postgres:5432/${AUTH_POSTGRES_DB:?}?sslmode=disable
+x-auth-dsn: &auth-dsn postgres://${AUTH_POSTGRES_USER:?}:${AUTH_POSTGRES_PASSWORD:?}@${AUTH_POSTGRES_HOST:?}:5432/${AUTH_POSTGRES_DB:?}?sslmode=disable
 
 services:
     auth-postgres:
@@ -47,14 +47,14 @@ services:
             target: runtime
         profiles: [auth]
         environment:
-            GRPC_ADDR: ":50051"
+            GRPC_ADDR: ":${AUTH_GRPC_PORT:?}"
             GRPC_REFLECTION: ${AUTH_GRPC_REFLECTION:-false}
             POSTGRES_DSN: *auth-dsn
             KAFKA_BROKERS: ${AUTH_KAFKA_BROKERS:?}
             ACCESS_PRIVATE_KEY_PATH: /keys/access.key
             ACCESS_PUBLIC_KEY_PATH: /keys/access.pub
         ports:
-            - "${AUTH_GRPC_PORT:?}:50051"
+            - "${AUTH_GRPC_PORT:?}:${AUTH_GRPC_PORT:?}"
         volumes:
             - ${AUTH_KEYS_DIR:?}:/keys:ro
         networks: [marketplace]
@@ -64,7 +64,7 @@ services:
             auth-migrate:
                 condition: service_completed_successfully
         healthcheck:
-            test: ["CMD", "grpc-health-probe", "-addr=127.0.0.1:50051"]
+            test: ["CMD", "grpc-health-probe", "-addr=127.0.0.1:${AUTH_GRPC_PORT}"]
             interval: 5s
             timeout: 3s
             retries: 5
