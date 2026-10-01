@@ -3,7 +3,7 @@
 services:
     redpanda:
         image: redpandadata/redpanda:v26.2.3
-        profiles: [auth]
+        profiles: [auth, user]
         command:
             - redpanda
             - start
@@ -29,7 +29,7 @@ services:
 
     redpanda-console:
         image: redpandadata/console:v3.12.0
-        profiles: [auth]
+        profiles: [auth, user]
         environment:
             KAFKA_BROKERS: redpanda:9092
         ports:
