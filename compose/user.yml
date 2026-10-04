@@ -39,7 +39,7 @@ services:
                 condition: service_healthy
         restart: "no"
 
-    user:
+    svc-user:
         image: ${USER_IMAGE:-svc-user:dev}
         pull_policy: build
         build:
