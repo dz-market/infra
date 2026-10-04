@@ -49,6 +49,7 @@ services:
         environment:
             GRPC_ADDR: ":${USER_GRPC_PORT:?}"
             GRPC_REFLECTION: ${USER_GRPC_REFLECTION:-false}
+            AUTH_SERVICE_ADDR: ${AUTH_SERVICE_ADDR:?}
             POSTGRES_DSN: *user-dsn
             KAFKA_BROKERS: ${USER_KAFKA_BROKERS:?}
         ports:
