@@ -22,4 +22,4 @@ jobs:
         steps:
             - uses: actions/checkout@v7
 
-            - run: docker compose -f local/compose.yml --env-file local/.env.example --profile "*" config
+            - run: docker compose -f local/compose.yml --profile "*" config -q

@@ -1,9 +1,12 @@
 name: marketplace
 
 include:
-    - compose/auth.yml
-    - compose/user.yml
-    - compose/redpanda.yml
+    - path: compose/auth.yml
+      env_file: env/auth.env
+    - path: compose/user.yml
+      env_file: env/user.env
+    - path: compose/redpanda.yml
+      env_file: env/redpanda.env
 
 networks:
     marketplace:
