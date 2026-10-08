@@ -28,7 +28,7 @@ services:
         image: ${USER_MIGRATE_IMAGE:-svc-user-migrate:dev}
         pull_policy: build
         build:
-            context: ../../svc-user
+            context: ../../../svc-user
             target: migrate
         profiles: [user]
         environment:
@@ -43,7 +43,7 @@ services:
         image: ${USER_IMAGE:-svc-user:dev}
         pull_policy: build
         build:
-            context: ../../svc-user
+            context: ../../../svc-user
             target: runtime
         profiles: [user]
         environment:

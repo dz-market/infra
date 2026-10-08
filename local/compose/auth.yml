@@ -28,7 +28,7 @@ services:
         image: ${AUTH_MIGRATE_IMAGE:-svc-auth-migrate:dev}
         pull_policy: build
         build:
-            context: ../../svc-auth
+            context: ../../../svc-auth
             target: migrate
         profiles: [auth]
         environment:
@@ -43,7 +43,7 @@ services:
         image: ${AUTH_IMAGE:-svc-auth:dev}
         pull_policy: build
         build:
-            context: ../../svc-auth
+            context: ../../../svc-auth
             target: runtime
         profiles: [auth]
         environment:
