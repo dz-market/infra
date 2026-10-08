@@ -3,32 +3,49 @@ version: "3"
 vars:
     PROFILES: '{{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}'
 
+    PROTOBUF_REF: '{{.PROTOBUF_REF | default "main"}}'
+    DESCRIPTOR_DIR: "{{.ROOT_DIR}}/.cache/descriptor"
+    DESCRIPTOR: "{{.DESCRIPTOR_DIR}}/marketplace.binpb"
+
 tasks:
     up:
+        deps: [descriptor]
         desc: "Start containers: task up -- auth (no args = all profiles)"
-        cmd: docker compose {{.PROFILES}} up -d --wait --wait-timeout 60
+        cmd: docker compose -f local/compose.yml {{.PROFILES}} up -d --wait --wait-timeout 60
 
     stop:
         desc: "Stop containers without removing them: task stop -- auth (no args = all profiles)"
-        cmd: docker compose {{.PROFILES}} stop
+        cmd: docker compose -f local/compose.yml {{.PROFILES}} stop
 
     restart:
         desc: "Restart containers with their current config: task restart -- auth (no args = all profiles)"
-        cmd: docker compose {{.PROFILES}} restart
+        cmd: docker compose -f local/compose.yml {{.PROFILES}} restart
 
     down:
         desc: "Stop and remove containers, keeping their data: task down -- auth (no args = all profiles)"
-        cmd: docker compose {{.PROFILES}} down
+        cmd: docker compose -f local/compose.yml {{.PROFILES}} down
 
     nuke:
         desc: "Remove containers and delete their data: task nuke -- auth (no args = all profiles)"
         prompt: "This will delete data volumes{{if .CLI_ARGS}} of '{{.CLI_ARGS}}'{{else}} of ALL services{{end}}. Continue?"
-        cmd: docker compose {{.PROFILES}} down -v
+        cmd: docker compose -f local/compose.yml {{.PROFILES}} down -v
 
     ps:
         desc: "Show status of all containers"
-        cmd: docker compose --profile "*" ps
+        cmd: docker compose -f local/compose.yml --profile "*" ps
 
     logs:
         desc: "Follow logs: task logs -- auth-postgres (no args = all services)"
-        cmd: docker compose --profile "*" logs -f {{.CLI_ARGS}}
+        cmd: docker compose -f local/compose.yml --profile "*" logs -f {{.CLI_ARGS}}
+
+    descriptor:
+        desc: "Download API descriptor"
+        run: once
+        cmds:
+            - mkdir -p {{.DESCRIPTOR_DIR}}
+            - >-
+                curl -fsSL --retry 3
+                --etag-compare {{.DESCRIPTOR_DIR}}/.etag --etag-save {{.DESCRIPTOR_DIR}}/.etag
+                -o {{.DESCRIPTOR}}
+                https://raw.githubusercontent.com/dz-market/protobuf/{{.PROTOBUF_REF}}/gen/descriptor/marketplace.binpb
+                || test -f {{.DESCRIPTOR}}
