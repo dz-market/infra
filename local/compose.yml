@@ -7,6 +7,8 @@ include:
       env_file: env/user.env
     - path: compose/redpanda.yml
       env_file: env/redpanda.env
+    - path: compose/gateway.yml
+      env_file: env/gateway.env
 
 networks:
     marketplace:

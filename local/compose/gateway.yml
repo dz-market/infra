@@ -1,0 +1,37 @@
+#file: noinspection ComposeUnknownValues
+
+services:
+    envoy:
+        image: envoyproxy/envoy:${ENVOY_VERSION:?}
+        profiles: [auth, user]
+        command: ["envoy", "-c", "/etc/envoy/envoy.yml"]
+        volumes:
+            -   type: bind
+                source: ../../config/envoy/envoy.yml
+                target: /etc/envoy/envoy.yml
+                read_only: true
+            -   type: bind
+                source: ${DESCRIPTOR_PATH:-../../.cache/descriptor/marketplace.binpb}
+                target: /etc/envoy/marketplace.binpb
+                read_only: true
+                bind:
+                    create_host_path: false
+        ports:
+            - "127.0.0.1:${GATEWAY_HTTP_PORT:?}:8080"
+            - "127.0.0.1:${GATEWAY_ADMIN_PORT:?}:9901"
+        networks: [marketplace]
+        healthcheck:
+            test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9901 && printf 'GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '^HTTP/1.1 200' <&3"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 5s
+            start_interval: 1s
+        depends_on:
+            -   svc-auth:
+                    condition: service_healthy
+                    required: false
+            -   svc-user:
+                    condition: service_healthy
+                    required: false
+        restart: unless-stopped
