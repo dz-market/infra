@@ -28,10 +28,10 @@ services:
             start_period: 5s
             start_interval: 1s
         depends_on:
-            -   svc-auth:
-                    condition: service_healthy
-                    required: false
-            -   svc-user:
-                    condition: service_healthy
-                    required: false
+            svc-auth:
+                condition: service_healthy
+                required: false
+            svc-user:
+                condition: service_healthy
+                required: false
         restart: unless-stopped
