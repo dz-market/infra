@@ -1,0 +1,47 @@
+#file: noinspection ComposeUnknownValues
+
+services:
+    vault:
+        image: hashicorp/vault:${VAULT_VERSION:?}
+        profiles: [auth, user]
+        command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+        environment:
+            VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN:?}
+        cap_add: [IPC_LOCK]
+        ports:
+            - "127.0.0.1:${VAULT_PORT:?}:8200"
+        networks: [marketplace]
+        healthcheck:
+            test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 5s
+            start_interval: 1s
+        restart: unless-stopped
+
+    vault-config:
+        image: ghcr.io/opentofu/opentofu:${OPENTOFU_VERSION:?}
+        profiles: [auth, user]
+        working_dir: /config
+        entrypoint: ["/bin/sh", "-c", "tofu init -input=false && tofu apply -input=false -auto-approve"]
+        environment:
+            VAULT_ADDR: http://vault:8200
+            VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN:?}
+            TF_DATA_DIR: /state/.terraform
+        volumes:
+            -   type: bind
+                source: ../../config/vault
+                target: /config
+            -   type: bind
+                source: ../../.cache/vault/approle
+                target: /approle
+            - vault-config-state:/state
+        networks: [marketplace]
+        depends_on:
+            vault:
+                condition: service_healthy
+        restart: "no"
+
+volumes:
+    vault-config-state:

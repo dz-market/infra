@@ -60,6 +60,8 @@ services:
                 condition: service_healthy
             user-migrate:
                 condition: service_completed_successfully
+            vault-config:
+                condition: service_completed_successfully
         healthcheck:
             test: ["CMD", "grpc-health-probe", "-addr=127.0.0.1:${USER_GRPC_PORT}"]
             interval: 5s
