@@ -82,12 +82,12 @@ static_resources:
             load_assignment:
                 cluster_name: svc-auth
                 endpoints:
-                    - lb_endpoints:
-                          - endpoint:
-                                address:
-                                    socket_address:
-                                        address: svc-auth
-                                        port_value: 50051
+                    -   lb_endpoints:
+                            -   endpoint:
+                                    address:
+                                        socket_address:
+                                            address: host.docker.internal
+                                            port_value: 50051
         -   name: svc-user
             type: STRICT_DNS
             connect_timeout: 1s
@@ -103,5 +103,5 @@ static_resources:
                             -   endpoint:
                                     address:
                                         socket_address:
-                                            address: svc-user
+                                            address: host.docker.internal
                                             port_value: 50052
