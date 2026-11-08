@@ -80,3 +80,18 @@ tasks:
                 {{.COMPOSE}} --profile "*"
                 up -d --no-deps --no-build
                 --wait --wait-timeout 60 envoy
+
+    vault:credentials:
+        desc: "Issue local Vault credentials: task vault:credentials -- auth"
+        silent: true
+        cmd: |
+            {{.COMPOSE}} exec -T vault sh -ec '
+                export VAULT_ADDR=http://127.0.0.1:8200
+                export VAULT_TOKEN="$VAULT_DEV_ROOT_TOKEN_ID"
+            
+                role_id=$(vault read -field=role_id "auth/approle/role/$1/role-id")
+            
+                secret_id=$(vault write -field=secret_id "auth/approle/role/$1/secret-id" ttl=8h num_uses=0)
+            
+                printf "VAULT_ROLE_ID=%s\nVAULT_SECRET_ID=%s\n" "$role_id" "$secret_id"
+            ' -- {{printf "svc-%s" .CLI_ARGS | shellQuote}}
