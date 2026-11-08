@@ -9,18 +9,14 @@ Local development environment
 
 </div>
 
-## Run
+## Local Development
 
-Required Docker Compose, Task and curl. Clone the service repositories alongside this repository.
-
-Start the environment:
+Requires Docker Compose and Task.
 
 ```bash
-task up
-```
-
-To start selected service profiles:
-
-```bash
-task up -- auth
+task up                        # Start everything
+task up -- auth user           # Start selected applications
+task up -- --deps auth user    # Start infrastructure and migrations
+task up -- --exclude auth      # Keep auth out of Docker
+task vault:credentials -- auth # Issue credentials for local auth
 ```
