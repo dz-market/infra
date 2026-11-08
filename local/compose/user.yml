@@ -3,48 +3,19 @@
 x-user-dsn: &user-dsn postgres://${USER_POSTGRES_USER:?}:${USER_POSTGRES_PASSWORD:?}@${USER_POSTGRES_HOST:?}:5432/${USER_POSTGRES_DB:?}?sslmode=disable
 
 services:
-    user-postgres:
-        image: postgres:18-alpine
-        profiles: [user]
-        environment:
-            POSTGRES_DB: ${USER_POSTGRES_DB:?}
-            POSTGRES_USER: ${USER_POSTGRES_USER:?}
-            POSTGRES_PASSWORD: ${USER_POSTGRES_PASSWORD:?}
-        ports:
-            - "${USER_POSTGRES_PORT:?}:5432"
-        volumes:
-            - user-postgres-data:/var/lib/postgresql
-        networks: [marketplace]
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-            interval: 5s
-            timeout: 3s
-            retries: 5
-            start_period: 10s
-            start_interval: 1s
-        restart: unless-stopped
-
     user-migrate:
-        image: ${USER_MIGRATE_IMAGE:-svc-user-migrate:dev}
-        pull_policy: build
-        build:
-            context: ../../../svc-user
-            target: migrate
+        image: ${USER_MIGRATE_IMAGE:?}
         profiles: [user]
         environment:
             GOOSE_DBSTRING: *user-dsn
         networks: [marketplace]
         depends_on:
-            user-postgres:
-                condition: service_healthy
+            postgres-config:
+                condition: service_completed_successfully
         restart: "no"
 
     svc-user:
-        image: ${USER_IMAGE:-svc-user:dev}
-        pull_policy: build
-        build:
-            context: ../../../svc-user
-            target: runtime
+        image: ${USER_IMAGE:?}
         profiles: [user]
         environment:
             GRPC_ADDR: ":${USER_GRPC_PORT:?}"
@@ -56,11 +27,9 @@ services:
             - "${USER_GRPC_PORT:?}:${USER_GRPC_PORT:?}"
         networks: [marketplace]
         depends_on:
-            user-postgres:
+            postgres:
                 condition: service_healthy
             user-migrate:
-                condition: service_completed_successfully
-            vault-config:
                 condition: service_completed_successfully
         healthcheck:
             test: ["CMD", "grpc-health-probe", "-addr=127.0.0.1:${USER_GRPC_PORT}"]
@@ -70,6 +39,3 @@ services:
             start_period: 10s
             start_interval: 1s
         restart: unless-stopped
-
-volumes:
-    user-postgres-data:

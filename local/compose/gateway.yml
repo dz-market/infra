@@ -2,7 +2,14 @@
 
 services:
     envoy:
-        image: envoyproxy/envoy:${ENVOY_VERSION:?}
+        image: marketplace/envoy:local
+        pull_policy: build
+        build:
+            context: ../..
+            dockerfile: config/envoy/Dockerfile
+            args:
+                ENVOY_IMAGE: envoyproxy/envoy:${ENVOY_VERSION:?}
+                PROTOBUF_IMAGE: ${PROTOBUF_IMAGE:?}
         profiles: [auth, user]
         command: ["envoy", "-c", "/etc/envoy/envoy.yml"]
         volumes:
@@ -10,12 +17,6 @@ services:
                 source: ../../config/envoy/envoy.yml
                 target: /etc/envoy/envoy.yml
                 read_only: true
-            -   type: bind
-                source: ${DESCRIPTOR_PATH:-../../.cache/descriptor/marketplace.binpb}
-                target: /etc/envoy/marketplace.binpb
-                read_only: true
-                bind:
-                    create_host_path: false
         ports:
             - "127.0.0.1:${GATEWAY_HTTP_PORT:?}:8080"
             - "127.0.0.1:${GATEWAY_ADMIN_PORT:?}:9901"

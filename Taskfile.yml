@@ -1,51 +1,97 @@
 version: "3"
 
 vars:
+    COMPOSE: 'docker compose -f {{printf "%s/local/compose.yml" .ROOT_DIR | shellQuote}}'
     PROFILES: '{{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}'
-
-    PROTOBUF_REF: '{{.PROTOBUF_REF | default "main"}}'
-    DESCRIPTOR_DIR: "{{.ROOT_DIR}}/.cache/descriptor"
-    DESCRIPTOR: "{{.DESCRIPTOR_DIR}}/marketplace.binpb"
+    APPS: [auth, user]
 
 tasks:
     up:
-        deps: [descriptor]
-        desc: "Start containers: task up -- auth (no args = all profiles)"
-        cmd: docker compose -f local/compose.yml {{.PROFILES}} up -d --wait --wait-timeout 60
+        desc: "Start containers: task up -- [auth user] [--deps] [--exclude auth] (no args = all profiles)"
+        cmd: >-
+            {{- $selected := list -}}
+            {{- $excluded := list -}}
+            {{- $deps := false -}}
+            {{- $expectExclude := false -}}
+            
+            {{- range .CLI_ARGS_LIST -}}
+                {{- if $expectExclude -}}
+                    {{- if not (has . $.APPS) -}}
+                        {{- fail (printf "Unknown excluded service: %s" .) -}}
+                    {{- end -}}
+                    {{- $excluded = append $excluded . -}}
+                    {{- $expectExclude = false -}}
+                {{- else if eq . "--deps" -}}
+                    {{- $deps = true -}}
+                {{- else if eq . "--exclude" -}}
+                    {{- $expectExclude = true -}}
+                {{- else if has . $.APPS -}}
+                    {{- $selected = append $selected . -}}
+                {{- else -}}
+                    {{- fail (printf "Unknown service or option: %s" .) -}}
+                {{- end -}}
+            {{- end -}}
+            
+            {{- if $expectExclude -}}
+                {{- fail "Expected a service name after --exclude" -}}
+            {{- end -}}
+            
+            {{- if not $selected -}}
+                {{- $selected = .APPS -}}
+            {{- end -}}
+            {{- $selected = uniq $selected -}}
+            
+            {{.COMPOSE}}{{range $selected}} --profile {{. | shellQuote}}{{end}} up -d --wait --wait-timeout 60{{range $selected}} --scale {{printf "svc-%s" . | shellQuote}}={{if or $deps (has . $excluded)}}0{{else}}1{{end}}{{end}}
 
     stop:
         desc: "Stop containers without removing them: task stop -- auth (no args = all profiles)"
-        cmd: docker compose -f local/compose.yml {{.PROFILES}} stop
+        cmd: "{{.COMPOSE}} {{.PROFILES}} stop"
 
     restart:
         desc: "Restart containers with their current config: task restart -- auth (no args = all profiles)"
-        cmd: docker compose -f local/compose.yml {{.PROFILES}} restart
+        cmd: "{{.COMPOSE}} {{.PROFILES}} restart"
 
     down:
         desc: "Stop and remove containers, keeping their data: task down -- auth (no args = all profiles)"
-        cmd: docker compose -f local/compose.yml {{.PROFILES}} down
+        cmd: "{{.COMPOSE}} {{.PROFILES}} down"
 
     nuke:
-        desc: "Remove containers and delete their data: task nuke -- auth (no args = all profiles)"
-        prompt: "This will delete data volumes{{if .CLI_ARGS}} of '{{.CLI_ARGS}}'{{else}} of ALL services{{end}}. Continue?"
-        cmd: docker compose -f local/compose.yml {{.PROFILES}} down -v
+        desc: "Remove all containers and delete all data"
+        prompt: "This will delete data volumes of ALL services. Continue?"
+        cmd: '{{.COMPOSE}} --profile "*" down -v'
 
     ps:
         desc: "Show status of all containers"
-        cmd: docker compose -f local/compose.yml --profile "*" ps
+        cmd: '{{.COMPOSE}} --profile "*" ps'
 
     logs:
-        desc: "Follow logs: task logs -- auth-postgres (no args = all services)"
-        cmd: docker compose -f local/compose.yml --profile "*" logs -f {{.CLI_ARGS}}
+        desc: "Follow logs: task logs -- postgres (no args = all services)"
+        cmd: '{{.COMPOSE}} --profile "*" logs -f {{.CLI_ARGS}}'
 
-    descriptor:
-        desc: "Download API descriptor"
-        run: once
+    gateway:build:
+        desc: "Build Envoy with the selected descriptor image"
+        cmd: '{{.COMPOSE}} --profile "*" build envoy'
+
+    gateway:update:
+        desc: "Pull gateway base images, rebuild and update Envoy"
         cmds:
-            - mkdir -p {{.DESCRIPTOR_DIR}}
+            - '{{.COMPOSE}} --profile "*" build --pull envoy'
             - >-
-                curl -fsSL --retry 3
-                --etag-compare {{.DESCRIPTOR_DIR}}/.etag --etag-save {{.DESCRIPTOR_DIR}}/.etag
-                -o {{.DESCRIPTOR}}
-                https://raw.githubusercontent.com/dz-market/protobuf/{{.PROTOBUF_REF}}/gen/descriptor/marketplace.binpb
-                || test -f {{.DESCRIPTOR}}
+                {{.COMPOSE}} --profile "*"
+                up -d --no-deps --no-build
+                --wait --wait-timeout 60 envoy
+
+    vault:credentials:
+        desc: "Issue local Vault credentials: task vault:credentials -- auth"
+        silent: true
+        cmd: |
+            {{.COMPOSE}} exec -T vault sh -ec '
+                export VAULT_ADDR=http://127.0.0.1:8200
+                export VAULT_TOKEN="$VAULT_DEV_ROOT_TOKEN_ID"
+            
+                role_id=$(vault read -field=role_id "auth/approle/role/$1/role-id")
+            
+                secret_id=$(vault write -field=secret_id "auth/approle/role/$1/secret-id" ttl=8h num_uses=0)
+            
+                printf "VAULT_ROLE_ID=%s\nVAULT_SECRET_ID=%s\n" "$role_id" "$secret_id"
+            ' -- {{printf "svc-%s" .CLI_ARGS | shellQuote}}
