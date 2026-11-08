@@ -24,7 +24,11 @@ services:
         image: ghcr.io/opentofu/opentofu:${OPENTOFU_VERSION:?}
         profiles: [auth, user]
         working_dir: /config
-        entrypoint: ["/bin/sh", "-c", "tofu init -input=false && tofu apply -input=false -auto-approve"]
+        entrypoint: ["/bin/sh", "-ec"]
+        command:
+            - |
+                tofu init -input=false -lockfile=readonly
+                tofu apply -input=false -auto-approve
         environment:
             VAULT_ADDR: http://vault:8200
             VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN:?}
@@ -33,9 +37,14 @@ services:
             -   type: bind
                 source: ../../config/vault
                 target: /config
-            -   type: bind
-                source: ../../.cache/vault/approle
-                target: /approle
+                read_only: true
+                bind:
+                    create_host_path: false
+
+            -   type: volume
+                source: auth-vault-credentials
+                target: /approle/svc-auth
+
             - vault-config-state:/state
         networks: [marketplace]
         depends_on:
@@ -45,3 +54,4 @@ services:
 
 volumes:
     vault-config-state:
+    auth-vault-credentials:

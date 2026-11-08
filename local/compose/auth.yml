@@ -3,27 +3,6 @@
 x-auth-dsn: &auth-dsn postgres://${AUTH_POSTGRES_USER:?}:${AUTH_POSTGRES_PASSWORD:?}@${AUTH_POSTGRES_HOST:?}:5432/${AUTH_POSTGRES_DB:?}?sslmode=disable
 
 services:
-    auth-postgres:
-        image: postgres:18-alpine
-        profiles: [auth]
-        environment:
-            POSTGRES_DB: ${AUTH_POSTGRES_DB:?}
-            POSTGRES_USER: ${AUTH_POSTGRES_USER:?}
-            POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD:?}
-        ports:
-            - "${AUTH_POSTGRES_PORT:?}:5432"
-        volumes:
-            - auth-postgres-data:/var/lib/postgresql
-        networks: [marketplace]
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-            interval: 5s
-            timeout: 3s
-            retries: 5
-            start_period: 10s
-            start_interval: 1s
-        restart: unless-stopped
-
     auth-migrate:
         image: ${AUTH_MIGRATE_IMAGE:-svc-auth-migrate:dev}
         pull_policy: build
@@ -35,8 +14,8 @@ services:
             GOOSE_DBSTRING: *auth-dsn
         networks: [marketplace]
         depends_on:
-            auth-postgres:
-                condition: service_healthy
+            postgres-config:
+                condition: service_completed_successfully
         restart: "no"
 
     svc-auth:
@@ -57,15 +36,13 @@ services:
         ports:
             - "${AUTH_GRPC_PORT:?}:${AUTH_GRPC_PORT:?}"
         volumes:
-            -   type: bind
-                source: ../../.cache/vault/approle/svc-auth
+            -   type: volume
+                source: auth-vault-credentials
                 target: /run/secrets/vault
                 read_only: true
-                bind:
-                    create_host_path: true
         networks: [marketplace]
         depends_on:
-            auth-postgres:
+            postgres:
                 condition: service_healthy
             auth-migrate:
                 condition: service_completed_successfully
@@ -79,6 +56,3 @@ services:
             start_period: 10s
             start_interval: 1s
         restart: unless-stopped
-
-volumes:
-    auth-postgres-data:

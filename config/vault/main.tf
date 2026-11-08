@@ -26,8 +26,10 @@ resource "vault_auth_backend" "approle" {
 
 locals {
   services = {
-    svc-auth = [vault_policy.token_signer.name, vault_policy.token_verifier.name]
-    svc-user = [vault_policy.token_verifier.name]
+    svc-auth = [
+      vault_policy.token_signer.name,
+      vault_policy.token_verifier.name
+    ]
   }
 }
 

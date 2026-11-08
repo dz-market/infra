@@ -1,0 +1,64 @@
+#file: noinspection ComposeUnknownValues
+
+services:
+    postgres:
+        image: postgres:18-alpine
+        profiles: [auth, user]
+        environment:
+            POSTGRES_DB: postgres
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+        ports:
+            - "127.0.0.1:${POSTGRES_PORT:?}:5432"
+        volumes:
+            - postgres-data:/var/lib/postgresql
+        networks: [marketplace]
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
+            start_interval: 1s
+        restart: unless-stopped
+
+    postgres-config:
+        image: ghcr.io/opentofu/opentofu:${OPENTOFU_VERSION:?}
+        profiles: [auth, user]
+        working_dir: /config
+        entrypoint: ["/bin/sh", "-ec"]
+        command:
+            - |
+                tofu init -input=false -lockfile=readonly
+                tofu apply -input=false -auto-approve
+        environment:
+            TF_IN_AUTOMATION: "true"
+            TF_DATA_DIR: /state/.terraform
+
+            PGPASSWORD: ${POSTGRES_PASSWORD:?}
+
+            TF_VAR_auth_database: ${AUTH_POSTGRES_DB:?}
+            TF_VAR_auth_username: ${AUTH_POSTGRES_USER:?}
+            TF_VAR_auth_password: ${AUTH_POSTGRES_PASSWORD:?}
+
+            TF_VAR_user_database: ${USER_POSTGRES_DB:?}
+            TF_VAR_user_username: ${USER_POSTGRES_USER:?}
+            TF_VAR_user_password: ${USER_POSTGRES_PASSWORD:?}
+        volumes:
+            -   type: bind
+                source: ../../config/postgres
+                target: /config
+                read_only: true
+                bind:
+                    create_host_path: false
+
+            - postgres-config-state:/state
+        networks: [marketplace]
+        depends_on:
+            postgres:
+                condition: service_healthy
+        restart: "no"
+
+volumes:
+    postgres-data:
+    postgres-config-state:
