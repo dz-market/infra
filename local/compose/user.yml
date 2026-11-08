@@ -4,11 +4,7 @@ x-user-dsn: &user-dsn postgres://${USER_POSTGRES_USER:?}:${USER_POSTGRES_PASSWOR
 
 services:
     user-migrate:
-        image: ${USER_MIGRATE_IMAGE:-svc-user-migrate:dev}
-        pull_policy: build
-        build:
-            context: ../../../svc-user
-            target: migrate
+        image: ${USER_MIGRATE_IMAGE:?}
         profiles: [user]
         environment:
             GOOSE_DBSTRING: *user-dsn
@@ -19,11 +15,7 @@ services:
         restart: "no"
 
     svc-user:
-        image: ${USER_IMAGE:-svc-user:dev}
-        pull_policy: build
-        build:
-            context: ../../../svc-user
-            target: runtime
+        image: ${USER_IMAGE:?}
         profiles: [user]
         environment:
             GRPC_ADDR: ":${USER_GRPC_PORT:?}"

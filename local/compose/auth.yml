@@ -4,11 +4,7 @@ x-auth-dsn: &auth-dsn postgres://${AUTH_POSTGRES_USER:?}:${AUTH_POSTGRES_PASSWOR
 
 services:
     auth-migrate:
-        image: ${AUTH_MIGRATE_IMAGE:-svc-auth-migrate:dev}
-        pull_policy: build
-        build:
-            context: ../../../svc-auth
-            target: migrate
+        image: ${AUTH_MIGRATE_IMAGE:?}
         profiles: [auth]
         environment:
             GOOSE_DBSTRING: *auth-dsn
@@ -19,11 +15,7 @@ services:
         restart: "no"
 
     svc-auth:
-        image: ${AUTH_IMAGE:-svc-auth:dev}
-        pull_policy: build
-        build:
-            context: ../../../svc-auth
-            target: runtime
+        image: ${AUTH_IMAGE:?}
         profiles: [auth]
         environment:
             VAULT_ADDR: ${VAULT_ADDR:?}
