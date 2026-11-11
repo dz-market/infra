@@ -18,8 +18,52 @@ jobs:
     verify:
         name: Verify
         runs-on: ubuntu-latest
-        timeout-minutes: 5
-        steps:
-            - uses: actions/checkout@v7
+        timeout-minutes: 10
+        env:
+            TF_IN_AUTOMATION: "true"
 
-            - run: docker compose -f local/compose.yml --profile "*" config -q
+        steps:
+            -   uses: actions/checkout@v7
+
+            -   name: Validate Compose
+                run: docker compose --env-file .env.example -f local/compose.yml --profile "*" config -q
+
+            -   name: Install Ansible checks
+                run: |
+                    sudo apt-get update
+                    sudo apt-get install -y ansible-core yamllint
+
+            -   name: Validate Ansible YAML
+                run: >-
+                    yamllint 
+                    -d '{rules: {key-duplicates: enable}}' 
+                    config/vault/ansible
+
+            -   name: Check Ansible playbooks
+                working-directory: config/vault/ansible
+                env:
+                    ANSIBLE_CONFIG: ansible.cfg
+                run: >-
+                    ansible-playbook
+                    -i localhost,
+                    --syntax-check
+                    playbooks/*.yml
+
+            -   uses: opentofu/setup-opentofu@v2
+                with:
+                    tofu_version: "1.13.9"
+                    tofu_wrapper: false
+
+            -   name: Check OpenTofu formatting
+                run: tofu fmt -check -recursive config
+
+            -   name: Validate OpenTofu modules
+                shell: bash
+                run: |
+                    find config -name .terraform.lock.hcl -not -path '*/.terraform/*' -print0 |
+                    while IFS= read -r -d '' file; do
+                      module="${file%/*}"
+                    
+                      tofu -chdir="$module" init -backend=false -input=false -lockfile=readonly -no-color
+                      tofu -chdir="$module" validate -no-color
+                    done
