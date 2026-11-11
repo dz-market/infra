@@ -1,0 +1,14 @@
+- name: Revoke temporary tokens
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/auth/token/revoke-self"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ temporary_token }}"
+    status_code: [204, 403]
+  loop:
+    - "{{ vault_config_verification.json.auth.client_token | default('') }}"
+    - "{{ vault_config_login.json.auth.client_token | default('') }}"
+  loop_control:
+    loop_var: temporary_token
+    label: temporary-token
+  when: temporary_token | length > 0

@@ -19,27 +19,20 @@ services:
         profiles: [auth]
         environment:
             VAULT_ADDR: ${VAULT_ADDR:?}
-            VAULT_ROLE_ID_FILE: /run/secrets/vault/role_id
-            VAULT_SECRET_ID_FILE: /run/secrets/vault/secret_id
             GRPC_ADDR: ":${AUTH_GRPC_PORT:?}"
             GRPC_REFLECTION: ${AUTH_GRPC_REFLECTION:-false}
             POSTGRES_DSN: *auth-dsn
             KAFKA_BROKERS: ${AUTH_KAFKA_BROKERS:?}
         ports:
             - "${AUTH_GRPC_PORT:?}:${AUTH_GRPC_PORT:?}"
-        volumes:
-            -   type: volume
-                source: auth-vault-credentials
-                target: /run/secrets/vault
-                read_only: true
         networks: [marketplace]
         depends_on:
             postgres:
                 condition: service_healthy
             auth-migrate:
                 condition: service_completed_successfully
-            vault-config:
-                condition: service_completed_successfully
+            vault-proxy-auth:
+                condition: service_healthy
         healthcheck:
             test: ["CMD", "grpc-health-probe", "-addr=127.0.0.1:${AUTH_GRPC_PORT}"]
             interval: 5s

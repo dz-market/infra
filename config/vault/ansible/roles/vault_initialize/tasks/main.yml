@@ -1,0 +1,56 @@
+- name: Prepare key directory
+  ansible.builtin.file:
+    path: /bootstrap
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Wait for Vault API
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/sys/init"
+    method: GET
+    status_code: 200
+  register: vault_init_status
+  until: vault_init_status.status | default(0) == 200
+  retries: 60
+  delay: 2
+  changed_when: false
+
+- name: Check saved key
+  ansible.builtin.stat:
+    path: "{{ vault_key_file }}"
+  register: vault_key_status
+
+- name: Check key for initialized Vault
+  ansible.builtin.assert:
+    that:
+      - not vault_init_status.json.initialized or vault_key_status.stat.exists
+
+- name: Initialize Vault
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/sys/init"
+    method: POST
+    body_format: json
+    body: "{{ vault_init_parameters }}"
+    status_code: 200
+    timeout: 120
+  register: vault_init_response
+  when: not vault_init_status.json.initialized
+  no_log: true
+
+- name: Save key
+  ansible.builtin.copy:
+    content: "{{ vault_init_response.json[vault_init_key_field][0] }}\n"
+    dest: "{{ vault_key_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: not vault_init_status.json.initialized
+  no_log: true
+  diff: false
+
+- name: Keep bootstrap token in memory
+  ansible.builtin.set_fact:
+    vault_bootstrap_token: "{{ vault_init_response.json.root_token | default('') }}"
+  no_log: true

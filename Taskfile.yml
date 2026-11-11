@@ -1,7 +1,7 @@
 version: "3"
 
 vars:
-    COMPOSE: 'docker compose -f {{printf "%s/local/compose.yml" .ROOT_DIR | shellQuote}}'
+    COMPOSE: 'docker compose --env-file {{printf "%s/.env" .ROOT_DIR | shellQuote}} -f {{printf "%s/local/compose.yml" .ROOT_DIR | shellQuote}}'
     PROFILES: '{{range splitList " " (.CLI_ARGS | default "*")}}--profile "{{.}}" {{end}}'
     APPS: [auth, user]
 
@@ -41,7 +41,7 @@ tasks:
             {{- end -}}
             {{- $selected = uniq $selected -}}
             
-            {{.COMPOSE}}{{range $selected}} --profile {{. | shellQuote}}{{end}} up -d --wait --wait-timeout 60{{range $selected}} --scale {{printf "svc-%s" . | shellQuote}}={{if or $deps (has . $excluded)}}0{{else}}1{{end}}{{end}}
+            {{.COMPOSE}}{{range $selected}} --profile {{. | shellQuote}}{{end}} up -d --build --wait --wait-timeout 60{{range $selected}} --scale {{printf "svc-%s" . | shellQuote}}={{if or $deps (has . $excluded)}}0{{else}}1{{end}}{{end}}
 
     stop:
         desc: "Stop containers without removing them: task stop -- auth (no args = all profiles)"
@@ -80,18 +80,3 @@ tasks:
                 {{.COMPOSE}} --profile "*"
                 up -d --no-deps --no-build
                 --wait --wait-timeout 60 envoy
-
-    vault:credentials:
-        desc: "Issue local Vault credentials: task vault:credentials -- auth"
-        silent: true
-        cmd: |
-            {{.COMPOSE}} exec -T vault sh -ec '
-                export VAULT_ADDR=http://127.0.0.1:8200
-                export VAULT_TOKEN="$VAULT_DEV_ROOT_TOKEN_ID"
-            
-                role_id=$(vault read -field=role_id "auth/approle/role/$1/role-id")
-            
-                secret_id=$(vault write -field=secret_id "auth/approle/role/$1/secret-id" ttl=8h num_uses=0)
-            
-                printf "VAULT_ROLE_ID=%s\nVAULT_SECRET_ID=%s\n" "$role_id" "$secret_id"
-            ' -- {{printf "svc-%s" .CLI_ARGS | shellQuote}}
