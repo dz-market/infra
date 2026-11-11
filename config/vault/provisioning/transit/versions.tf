@@ -6,14 +6,10 @@ terraform {
       source  = "hashicorp/vault"
       version = "~> 5.12"
     }
-    local = {
-      source  = "hashicorp/local"
-      version = "~> 2.9"
-    }
   }
 
   backend "local" {
-    path = "/state/terraform.tfstate"
+    path = "/state/transit.tfstate"
   }
 }
 

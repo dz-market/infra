@@ -1,0 +1,45 @@
+- name: Bootstrap Main Vault
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    vault_addr: "{{ lookup('ansible.builtin.env', 'VAULT_ADDR') }}"
+    vault_key_file: /bootstrap/recovery-key
+    vault_init_key_field: recovery_keys_base64
+
+    vault_init_parameters:
+      recovery_shares: 1
+      recovery_threshold: 1
+
+    vault_config_role: infra-config
+    vault_tofu_directory: /provisioning/main
+    vault_tofu_data_directory: /state/main-data
+
+  module_defaults:
+    ansible.builtin.uri:
+      timeout: 10
+
+  roles:
+    - vault_initialize
+
+  tasks:
+    - name: Provision Main Vault
+      no_log: true
+      diff: false
+      block:
+        - name: Configure Main Vault
+          ansible.builtin.include_tasks: ../tasks/provision.yml
+
+        - name: Revoke bootstrap root token
+          ansible.builtin.uri:
+            url: "{{ vault_addr }}/v1/auth/token/revoke-self"
+            method: POST
+            headers:
+              X-Vault-Token: "{{ vault_bootstrap_token }}"
+            status_code: 204
+          when: vault_bootstrap_token | length > 0
+
+      always:
+        - name: Revoke temporary tokens
+          ansible.builtin.include_tasks: ../tasks/logout.yml

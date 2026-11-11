@@ -1,0 +1,49 @@
+- name: Bootstrap Transit Vault
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    vault_addr: "{{ lookup('ansible.builtin.env', 'VAULT_UNSEAL_ADDR') }}"
+    vault_key_file: /bootstrap/unseal-key
+    vault_init_key_field: keys_base64
+
+    vault_init_parameters:
+      secret_shares: 1
+      secret_threshold: 1
+
+    vault_config_role: transit-config
+    vault_tofu_directory: /provisioning/transit
+    vault_tofu_data_directory: /state/transit-data
+
+  module_defaults:
+    ansible.builtin.uri:
+      timeout: 10
+
+  roles:
+    - vault_initialize
+    - vault_unseal
+
+  tasks:
+    - name: Provision Transit Vault
+      no_log: true
+      diff: false
+      block:
+        - name: Configure Transit Vault
+          ansible.builtin.include_tasks: ../tasks/provision.yml
+
+        - name: Configure seal token
+          ansible.builtin.include_tasks: ../tasks/transit-token.yml
+
+        - name: Revoke bootstrap root token
+          ansible.builtin.uri:
+            url: "{{ vault_addr }}/v1/auth/token/revoke-self"
+            method: POST
+            headers:
+              X-Vault-Token: "{{ vault_bootstrap_token }}"
+            status_code: 204
+          when: vault_bootstrap_token | length > 0
+
+      always:
+        - name: Revoke temporary tokens
+          ansible.builtin.include_tasks: ../tasks/logout.yml

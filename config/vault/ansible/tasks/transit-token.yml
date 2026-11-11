@@ -1,0 +1,51 @@
+- name: Prepare seal token directory
+  ansible.builtin.file:
+    path: /run/secrets/transit
+    state: directory
+    owner: vault
+    group: vault
+    mode: "0700"
+
+- name: Read saved seal token
+  ansible.builtin.set_fact:
+    vault_saved_seal_token: >-
+      {{
+        lookup(
+          'ansible.builtin.file',
+          '/run/secrets/transit/token',
+          errors='ignore'
+        ) | default('', true) | trim
+      }}
+
+- name: Check saved seal token
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/auth/token/lookup-self"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ vault_saved_seal_token }}"
+    status_code: [200, 403]
+  register: vault_saved_seal_token_status
+  when: vault_saved_seal_token | length > 0
+  changed_when: false
+
+- name: Issue seal token
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/auth/token/create/autounseal"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      policies: [autounseal]
+    status_code: 200
+  register: vault_issued_seal_token
+  when: vault_saved_seal_token_status.status | default(403) != 200
+
+- name: Save seal token
+  ansible.builtin.copy:
+    content: "{{ vault_issued_seal_token.json.auth.client_token }}"
+    dest: /run/secrets/transit/token
+    owner: vault
+    group: vault
+    mode: "0400"
+  when: vault_issued_seal_token is not skipped

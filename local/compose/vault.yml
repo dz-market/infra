@@ -1,57 +1,160 @@
 #file: noinspection ComposeUnknownValues
 
-services:
-    vault:
-        image: hashicorp/vault:${VAULT_VERSION:?}
-        profiles: [auth, user]
-        command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
-        environment:
-            VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN:?}
-        cap_add: [IPC_LOCK]
-        ports:
-            - "127.0.0.1:${VAULT_PORT:?}:8200"
-        networks: [marketplace]
-        healthcheck:
-            test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
-            interval: 5s
-            timeout: 3s
-            retries: 5
-            start_period: 5s
-            start_interval: 1s
-        restart: unless-stopped
+x-vault-server: &vault-server
+    image: hashicorp/vault:${VAULT_VERSION:?}
+    profiles: [auth]
+    environment:
+        VAULT_ADDR: http://127.0.0.1:8200
+    tmpfs:
+        - /tmp
+    healthcheck:
+        test: ["CMD", "vault", "status"]
+        interval: 5s
+        timeout: 3s
+        retries: 12
+        start_period: 10s
+        start_interval: 1s
+    restart: unless-stopped
 
-    vault-config:
-        image: ghcr.io/opentofu/opentofu:${OPENTOFU_VERSION:?}
-        profiles: [auth, user]
-        working_dir: /config
-        entrypoint: ["/bin/sh", "-ec"]
-        command:
-            - |
-                tofu init -input=false -lockfile=readonly
-                tofu apply -input=false -auto-approve
-        environment:
-            VAULT_ADDR: http://vault:8200
-            VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN:?}
-            TF_DATA_DIR: /state/.terraform
+x-vault-automation: &vault-automation
+    image: marketplace-vault-automation:local
+    build:
+        context: ../../config/vault
+        dockerfile: Dockerfile
+        args:
+            VAULT_VERSION: ${VAULT_VERSION:?}
+            OPENTOFU_VERSION: ${OPENTOFU_VERSION:?}
+    profiles: [auth]
+    environment:
+        VAULT_ADDR: http://vault:8200
+        VAULT_UNSEAL_ADDR: http://vault-unseal:8200
+    tmpfs:
+        - /tmp
+    networks: [vault]
+
+services:
+    vault-unseal:
+        <<: *vault-server
+        command: ["vault", "server", "-config=/etc/vault/unseal.hcl"]
         volumes:
             -   type: bind
-                source: ../../config/vault
-                target: /config
+                source: ../../config/vault/server/unseal.hcl
+                target: /etc/vault/unseal.hcl
+                read_only: true
+                bind:
+                    create_host_path: false
+
+            - vault-unseal-data:/vault/file
+        networks: [vault]
+
+    vault-transit-bootstrap:
+        <<: *vault-automation
+        command: ["playbooks/bootstrap-transit.yml"]
+        volumes:
+            - vault-transit-bootstrap-keys:/bootstrap
+            - vault-state:/state
+            - vault-transit-config-credentials:/credentials/transit-config
+            - vault-transit-token:/run/secrets/transit
+        depends_on:
+            vault-unseal:
+                condition: service_started
+        restart: "no"
+
+    vault:
+        <<: *vault-server
+        command: ["vault", "server", "-config=/etc/vault/main.hcl"]
+        environment:
+            VAULT_ADDR: http://127.0.0.1:8200
+            SKIP_SETCAP: "true"
+        ports:
+            - "127.0.0.1:${VAULT_PORT:?}:8200"
+        volumes:
+            -   type: bind
+                source: ../../config/vault/server/main.hcl
+                target: /etc/vault/main.hcl
+                read_only: true
+                bind:
+                    create_host_path: false
+
+            - vault-data:/vault/file
+
+            -   type: volume
+                source: vault-transit-token
+                target: /run/secrets/transit
+                read_only: true
+        networks: [vault]
+        depends_on:
+            vault-transit-bootstrap:
+                condition: service_completed_successfully
+
+    vault-main-bootstrap:
+        <<: *vault-automation
+        command: ["playbooks/bootstrap-main.yml"]
+        volumes:
+            - vault-main-bootstrap-keys:/bootstrap
+            - vault-state:/state
+            - vault-config-credentials:/credentials/infra-config
+            - auth-vault-credentials:/credentials/svc-auth
+        depends_on:
+            vault:
+                condition: service_started
+        restart: "no"
+
+    vault-proxy-auth:
+        image: hashicorp/vault:${VAULT_VERSION:?}
+        profiles: [auth]
+        command: ["vault", "proxy", "-config=/etc/vault/proxy.hcl"]
+        environment:
+            VAULT_ADDR: http://vault:8200
+        ports:
+            - "127.0.0.1:${VAULT_AUTH_PROXY_PORT:?}:8200"
+        volumes:
+            -   type: bind
+                source: ../../config/vault/proxy/proxy.hcl
+                target: /etc/vault/proxy.hcl
                 read_only: true
                 bind:
                     create_host_path: false
 
             -   type: volume
                 source: auth-vault-credentials
-                target: /approle/svc-auth
-
-            - vault-config-state:/state
-        networks: [marketplace]
+                target: /run/secrets/vault
+                read_only: true
+        tmpfs:
+            - /tmp
+        networks: [vault, marketplace]
         depends_on:
             vault:
                 condition: service_healthy
-        restart: "no"
+            vault-main-bootstrap:
+                condition: service_completed_successfully
+                restart: true
+        healthcheck:
+            test:
+                - CMD-SHELL
+                - vault read -address=http://127.0.0.1:8200 auth/token/lookup-self >/dev/null
+            interval: 5s
+            timeout: 3s
+            retries: 12
+            start_period: 5s
+            start_interval: 1s
+        restart: unless-stopped
 
 volumes:
-    vault-config-state:
+    vault-unseal-data:
+    vault-data:
+
+    vault-transit-bootstrap-keys:
+    vault-main-bootstrap-keys:
+
+    vault-state:
+
+    vault-transit-token:
+
+    vault-transit-config-credentials:
+    vault-config-credentials:
+
     auth-vault-credentials:
+
+networks:
+    vault:

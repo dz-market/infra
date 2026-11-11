@@ -9,14 +9,42 @@ Local development environment
 
 </div>
 
-## Local Development
+## Getting started
 
 Requires Docker Compose and Task.
 
 ```bash
-task up                        # Start everything
-task up -- auth user           # Start selected applications
-task up -- --deps auth user    # Start infrastructure and migrations
-task up -- --exclude auth      # Keep auth out of Docker
-task vault:credentials -- auth # Issue credentials for local auth
+cp .env.example .env
+```
+
+### Run everything
+
+```bash
+task up
+```
+
+### Local development
+
+Run infrastructure and migrations, then manually start application:
+
+```bash
+task up -- --deps auth user
+```
+
+Or keep only `svc-auth` outside Docker:
+
+```bash
+task up -- --exclude auth
+```
+
+When auth runs on the host, set `AUTH_SERVICE_ADDR=host.docker.internal:50051` in `.env`.
+
+### Manage
+
+```bash
+task ps             # Container status
+task logs -- vault  # Follow service logs
+task stop           # Stop containers
+task down           # Remove containers, keep data
+task nuke           # Remove containers and all data
 ```

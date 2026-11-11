@@ -1,26 +1,12 @@
 name: marketplace
 
 include:
-    -   path: compose/postgres.yml
-        env_file:
-            - env/postgres.env
-            - env/auth.env
-            - env/user.env
-
-    -   path: compose/auth.yml
-        env_file: env/auth.env
-
-    -   path: compose/user.yml
-        env_file: env/user.env
-
-    -   path: compose/redpanda.yml
-        env_file: env/redpanda.env
-
-    -   path: compose/gateway.yml
-        env_file: env/gateway.env
-
-    -   path: compose/vault.yml
-        env_file: env/vault.env
+    - compose/postgres.yml
+    - compose/auth.yml
+    - compose/user.yml
+    - compose/redpanda.yml
+    - compose/gateway.yml
+    - compose/vault.yml
 
 networks:
     marketplace:

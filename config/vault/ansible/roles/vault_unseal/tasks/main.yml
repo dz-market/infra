@@ -1,0 +1,29 @@
+- name: Read Vault seal status
+  ansible.builtin.uri:
+    url: "{{ vault_addr  }}/v1/sys/seal-status"
+    method: GET
+    status_code: 200
+  register: vault_seal_status
+  changed_when: false
+
+- name: Unseal Vault
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/sys/unseal"
+    method: POST
+    body_format: json
+    body:
+      key: "{{ lookup('ansible.builtin.file', vault_key_file) | trim }}"
+    status_code: 200
+  when: vault_seal_status.json.sealed
+  no_log: true
+
+- name: Wait for unsealed Vault
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/sys/seal-status"
+    method: GET
+    status_code: 200
+  register: vault_ready
+  until: not (vault_ready.json.sealed | default(true))
+  retries: 30
+  delay: 2
+  changed_when: false
