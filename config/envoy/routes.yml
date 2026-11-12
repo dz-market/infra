@@ -6,12 +6,12 @@ resources:
                 domains: ["*"]
                 routes:
                     -   match:
-                            prefix: /auth.api.
+                            prefix: /auth.api.v1.AuthService/
                         route:
                             cluster: svc-auth
                             timeout: 15s
                     -   match:
-                            prefix: /user.api.
+                            prefix: /user.api.v1.UserService/
                         route:
                             cluster: svc-user
                             timeout: 15s
