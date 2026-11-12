@@ -15,8 +15,8 @@ resources:
                         -   endpoint:
                                 address:
                                     socket_address:
-                                        address: host.docker.internal
-                                        port_value: 50051
+                                        address: ${ENVOY_AUTH_HOST}
+                                        port_value: ${ENVOY_AUTH_PORT}
     -   "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
         name: svc-user
         type: STRICT_DNS
@@ -33,5 +33,5 @@ resources:
                         -   endpoint:
                                 address:
                                     socket_address:
-                                        address: host.docker.internal
-                                        port_value: 50052
+                                        address: ${ENVOY_USER_HOST}
+                                        port_value: ${ENVOY_USER_PORT}

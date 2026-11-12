@@ -11,9 +11,14 @@ services:
                 ENVOY_IMAGE: envoyproxy/envoy:${ENVOY_VERSION:?}
                 PROTOBUF_IMAGE: ${PROTOBUF_IMAGE:?}
         profiles: [auth, user]
+        environment:
+            ENVOY_AUTH_HOST: ${ENVOY_AUTH_HOST:?}
+            ENVOY_AUTH_PORT: ${ENVOY_AUTH_PORT:?}
+            ENVOY_USER_HOST: ${ENVOY_USER_HOST:?}
+            ENVOY_USER_PORT: ${ENVOY_USER_PORT:?}
         ports:
-            - "127.0.0.1:${GATEWAY_HTTP_PORT:?}:8080"
-            - "127.0.0.1:${GATEWAY_ADMIN_PORT:?}:9901"
+            - "127.0.0.1:${ENVOY_HTTP_PORT:?}:8080"
+            - "127.0.0.1:${ENVOY_ADMIN_PORT:?}:9901"
         networks: [marketplace]
         healthcheck:
             test:

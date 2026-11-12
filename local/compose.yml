@@ -5,7 +5,7 @@ include:
     - compose/auth.yml
     - compose/user.yml
     - compose/redpanda.yml
-    - compose/gateway.yml
+    - compose/envoy.yml
     - compose/vault.yml
 
 networks:
