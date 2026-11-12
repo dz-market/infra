@@ -6,3 +6,11 @@ FROM ${PROTOBUF_IMAGE} AS descriptor
 FROM ${ENVOY_IMAGE}
 
 COPY --from=descriptor /marketplace.binpb /etc/envoy/marketplace.binpb
+
+COPY config/envoy/envoy.yml \
+    config/envoy/listeners.yml \
+    config/envoy/routes.yml \
+    config/envoy/clusters.yml \
+    /etc/envoy/
+
+CMD ["envoy", "-c", "/etc/envoy/envoy.yml"]

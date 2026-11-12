@@ -1,0 +1,61 @@
+resources:
+    -   "@type": type.googleapis.com/envoy.config.listener.v3.Listener
+        name: edge
+        address:
+            socket_address:
+                address: 0.0.0.0
+                port_value: 8080
+
+        filter_chains:
+            -   filters:
+                    -   name: envoy.filters.network.http_connection_manager
+                        typed_config:
+                            "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                            stat_prefix: edge
+                            use_remote_address: true
+
+                            access_log:
+                                -   name: envoy.access_loggers.stdout
+                                    typed_config:
+                                        "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+
+                            rds:
+                                route_config_name: edge
+                                config_source:
+                                    resource_api_version: V3
+                                    path: /etc/envoy/routes.yml
+
+                            http_filters:
+                                -   name: envoy.filters.http.rbac
+                                    typed_config:
+                                        "@type": type.googleapis.com/envoy.extensions.filters.http.rbac.v3.RBAC
+                                        rules:
+                                            action: DENY
+                                            policies:
+                                                native-grpc:
+                                                    permissions:
+                                                        -   header:
+                                                                name: content-type
+                                                                string_match:
+                                                                    prefix: application/grpc
+                                                    principals:
+                                                        -   any: true
+
+                                -   name: envoy.filters.http.grpc_json_transcoder
+                                    typed_config:
+                                        "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_json_transcoder.v3.GrpcJsonTranscoder
+                                        proto_descriptor: /etc/envoy/marketplace.binpb
+                                        services:
+                                            - auth.api.v1.AuthService
+                                            - user.api.v1.UserService
+                                        match_incoming_request_route: false
+                                        convert_grpc_status: true
+                                        request_validation_options:
+                                            reject_unknown_method: true
+                                            reject_unknown_query_parameters: true
+                                        print_options:
+                                            always_print_primitive_fields: true
+
+                                -   name: envoy.filters.http.router
+                                    typed_config:
+                                        "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
