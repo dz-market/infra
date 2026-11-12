@@ -5,6 +5,7 @@
 Local development environment
 
 [![CI](https://github.com/dz-market/infra/actions/workflows/ci.yml/badge.svg)](https://github.com/dz-market/infra/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/dz-market/infra)](https://github.com/dz-market/infra/releases)
 [![License](https://img.shields.io/github/license/dz-market/infra)](LICENSE)
 
 </div>
