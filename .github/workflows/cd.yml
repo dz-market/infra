@@ -1,0 +1,22 @@
+name: CD
+
+on:
+    push:
+        tags: ["v*.*.*"]
+
+permissions:
+    contents: read
+    packages: write
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    envoy:
+        name: Publish Envoy
+        uses: dz-market/github-actions/.github/workflows/docker-publish.yml@v1
+        with:
+            target: envoy
+            file: config/envoy/Dockerfile
+            image: ghcr.io/dz-market/envoy

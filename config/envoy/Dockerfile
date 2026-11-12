@@ -3,7 +3,7 @@ ARG ENVOY_IMAGE=envoyproxy/envoy:v1.39.3
 
 FROM ${PROTOBUF_IMAGE} AS descriptor
 
-FROM ${ENVOY_IMAGE}
+FROM ${ENVOY_IMAGE} AS envoy
 
 USER root
 
