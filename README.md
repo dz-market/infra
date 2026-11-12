@@ -25,19 +25,26 @@ task up
 
 ### Local development
 
-Run infrastructure and migrations, then manually start application:
+Start dependencies and migrations, then run applications locally:
 
 ```bash
 task up -- --deps auth user
 ```
 
-Or keep only `svc-auth` outside Docker:
+Set `ENVOY_AUTH_HOST` and `ENVOY_USER_HOST` to `host.docker.internal` in `.env`.
+
+To run only auth locally:
 
 ```bash
 task up -- --exclude auth
 ```
 
-When auth runs on the host, set `AUTH_SERVICE_ADDR=host.docker.internal:50051` in `.env`.
+Set in `.env`:
+
+```dotenv
+ENVOY_AUTH_HOST=host.docker.internal
+AUTH_SERVICE_ADDR=host.docker.internal:50051
+```
 
 ### Manage
 

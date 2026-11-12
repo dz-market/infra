@@ -1,0 +1,37 @@
+resources:
+    -   "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+        name: svc-auth
+        type: STRICT_DNS
+        connect_timeout: 1s
+        typed_extension_protocol_options:
+            envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+                "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+                explicit_http_config:
+                    http2_protocol_options: {}
+        load_assignment:
+            cluster_name: svc-auth
+            endpoints:
+                -   lb_endpoints:
+                        -   endpoint:
+                                address:
+                                    socket_address:
+                                        address: ${ENVOY_AUTH_HOST}
+                                        port_value: ${ENVOY_AUTH_PORT}
+    -   "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+        name: svc-user
+        type: STRICT_DNS
+        connect_timeout: 1s
+        typed_extension_protocol_options:
+            envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+                "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+                explicit_http_config:
+                    http2_protocol_options: {}
+        load_assignment:
+            cluster_name: svc-user
+            endpoints:
+                -   lb_endpoints:
+                        -   endpoint:
+                                address:
+                                    socket_address:
+                                        address: ${ENVOY_USER_HOST}
+                                        port_value: ${ENVOY_USER_PORT}

@@ -68,11 +68,11 @@ tasks:
         desc: "Follow logs: task logs -- postgres (no args = all services)"
         cmd: '{{.COMPOSE}} --profile "*" logs -f {{.CLI_ARGS}}'
 
-    gateway:build:
+    envoy:build:
         desc: "Build Envoy with the selected descriptor image"
         cmd: '{{.COMPOSE}} --profile "*" build envoy'
 
-    gateway:update:
+    envoy:update:
         desc: "Pull gateway base images, rebuild and update Envoy"
         cmds:
             - '{{.COMPOSE}} --profile "*" build --pull envoy'

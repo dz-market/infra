@@ -16,8 +16,8 @@ x-vault-server: &vault-server
         start_interval: 1s
     restart: unless-stopped
 
-x-vault-automation: &vault-automation
-    image: marketplace-vault-automation:local
+x-vault-bootstrap: &vault-bootstrap
+    image: marketplace/vault-bootstrap:local
     build:
         context: ../../config/vault
         dockerfile: Dockerfile
@@ -48,7 +48,7 @@ services:
         networks: [vault]
 
     vault-transit-bootstrap:
-        <<: *vault-automation
+        <<: *vault-bootstrap
         command: ["playbooks/bootstrap-transit.yml"]
         volumes:
             - vault-transit-bootstrap-keys:/bootstrap
@@ -88,7 +88,7 @@ services:
                 condition: service_completed_successfully
 
     vault-main-bootstrap:
-        <<: *vault-automation
+        <<: *vault-bootstrap
         command: ["playbooks/bootstrap-main.yml"]
         volumes:
             - vault-main-bootstrap-keys:/bootstrap

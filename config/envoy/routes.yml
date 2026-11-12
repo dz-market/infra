@@ -1,0 +1,17 @@
+resources:
+    -   "@type": type.googleapis.com/envoy.config.route.v3.RouteConfiguration
+        name: edge
+        virtual_hosts:
+            -   name: api
+                domains: ["*"]
+                routes:
+                    -   match:
+                            prefix: /auth.api.v1.AuthService/
+                        route:
+                            cluster: svc-auth
+                            timeout: 15s
+                    -   match:
+                            prefix: /user.api.v1.UserService/
+                        route:
+                            cluster: svc-user
+                            timeout: 15s
