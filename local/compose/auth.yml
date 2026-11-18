@@ -27,7 +27,7 @@ services:
             - "${AUTH_GRPC_PORT:?}:${AUTH_GRPC_PORT:?}"
         networks: [marketplace]
         depends_on:
-            redpanda-config:
+            kafka-config:
                 condition: service_completed_successfully
             auth-migrate:
                 condition: service_completed_successfully

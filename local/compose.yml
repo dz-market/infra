@@ -4,7 +4,7 @@ include:
     - compose/postgres.yml
     - compose/auth.yml
     - compose/user.yml
-    - compose/redpanda.yml
+    - compose/kafka.yml
     - compose/envoy.yml
     - compose/vault.yml
 

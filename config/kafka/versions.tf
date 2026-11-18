@@ -14,7 +14,7 @@ terraform {
 }
 
 provider "kafka" {
-  bootstrap_servers = ["redpanda:9092"]
+  bootstrap_servers = ["kafka:9092"]
   kafka_version     = "2.1.0"
   tls_enabled       = false
 }

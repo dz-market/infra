@@ -1,7 +1,7 @@
 #file: noinspection ComposeUnknownValues
 
 services:
-    redpanda:
+    kafka:
         image: redpandadata/redpanda:v26.2.3
         profiles: [auth, user]
         command:
@@ -10,11 +10,11 @@ services:
             - --mode=dev-container
             - --smp=1
             - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
-            - --advertise-kafka-addr=internal://redpanda:9092,external://127.0.0.1:${REDPANDA_PORT:?}
-            - --rpc-addr=redpanda:33145
-            - --advertise-rpc-addr=redpanda:33145
+            - --advertise-kafka-addr=internal://kafka:9092,external://127.0.0.1:${KAFKA_PORT:?}
+            - --rpc-addr=kafka:33145
+            - --advertise-rpc-addr=kafka:33145
         ports:
-            - "${REDPANDA_PORT:?}:19092"
+            - "${KAFKA_PORT:?}:19092"
         volumes:
             - redpanda-data:/var/lib/redpanda/data
         networks: [marketplace]
@@ -27,7 +27,7 @@ services:
             start_interval: 1s
         restart: unless-stopped
 
-    redpanda-config:
+    kafka-config:
         image: ghcr.io/opentofu/opentofu:${OPENTOFU_VERSION}
         profiles: [auth, user]
         working_dir: /config
@@ -41,7 +41,7 @@ services:
             TF_DATA_DIR: /state/.terraform
         volumes:
             -   type: bind
-                source: ../../config/redpanda
+                source: ../../config/kafka
                 target: /config
                 read_only: true
                 bind:
@@ -50,20 +50,20 @@ services:
             - redpanda-config-state:/state
         networks: [marketplace]
         depends_on:
-            redpanda:
+            kafka:
                 condition: service_healthy
         restart: "no"
 
-    redpanda-console:
+    kafka-console:
         image: redpandadata/console:v3.12.0
         profiles: [auth, user]
         environment:
-            KAFKA_BROKERS: redpanda:9092
+            KAFKA_BROKERS: kafka:9092
         ports:
-            - "${REDPANDA_CONSOLE_PORT:?}:8080"
+            - "${KAFKA_CONSOLE_PORT:?}:8080"
         networks: [marketplace]
         depends_on:
-            redpanda:
+            kafka:
                 condition: service_healthy
         restart: unless-stopped
 

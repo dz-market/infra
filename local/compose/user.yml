@@ -27,7 +27,7 @@ services:
             - "${USER_GRPC_PORT:?}:${USER_GRPC_PORT:?}"
         networks: [marketplace]
         depends_on:
-            redpanda-config:
+            kafka-config:
                 condition: service_completed_successfully
             user-migrate:
                 condition: service_completed_successfully
