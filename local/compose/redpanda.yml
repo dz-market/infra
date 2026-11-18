@@ -27,6 +27,33 @@ services:
             start_interval: 1s
         restart: unless-stopped
 
+    redpanda-config:
+        image: ghcr.io/opentofu/opentofu:${OPENTOFU_VERSION}
+        profiles: [auth, user]
+        working_dir: /config
+        entrypoint: ["/bin/sh", "-ec"]
+        command:
+            - |
+                tofu init -input=false -lockfile=readonly
+                tofu apply -input=false -auto-approve
+        environment:
+            TF_IN_AUTOMATION: "true"
+            TF_DATA_DIR: /state/.terraform
+        volumes:
+            -   type: bind
+                source: ../../config/redpanda
+                target: /config
+                read_only: true
+                bind:
+                    create_host_path: false
+
+            - redpanda-config-state:/state
+        networks: [marketplace]
+        depends_on:
+            redpanda:
+                condition: service_healthy
+        restart: "no"
+
     redpanda-console:
         image: redpandadata/console:v3.12.0
         profiles: [auth, user]
@@ -42,3 +69,4 @@ services:
 
 volumes:
     redpanda-data:
+    redpanda-config-state:

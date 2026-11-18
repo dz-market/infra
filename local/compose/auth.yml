@@ -27,8 +27,8 @@ services:
             - "${AUTH_GRPC_PORT:?}:${AUTH_GRPC_PORT:?}"
         networks: [marketplace]
         depends_on:
-            postgres:
-                condition: service_healthy
+            redpanda-config:
+                condition: service_completed_successfully
             auth-migrate:
                 condition: service_completed_successfully
             vault-proxy-auth:

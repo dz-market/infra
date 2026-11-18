@@ -27,8 +27,8 @@ services:
             - "${USER_GRPC_PORT:?}:${USER_GRPC_PORT:?}"
         networks: [marketplace]
         depends_on:
-            postgres:
-                condition: service_healthy
+            redpanda-config:
+                condition: service_completed_successfully
             user-migrate:
                 condition: service_completed_successfully
         healthcheck:
